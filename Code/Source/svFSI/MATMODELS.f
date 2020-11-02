@@ -42,6 +42,7 @@
       USE MATFUN
       USE COMMOD
       IMPLICIT NONE
+!      EXTERNAL matDamage	! (HW)
       TYPE(dmnType), INTENT(IN) :: lDmn
       INTEGER(KIND=IKIND), INTENT(IN) :: nfd
       REAL(KIND=RKIND), INTENT(IN) :: F(nsd,nsd), fl(nsd,nfd), ya
@@ -58,6 +59,7 @@
      4   Hss(nsd,nsd), Sfs(nsd,nsd,6), Hfs(nsd,nsd)
 !     Active strain for electromechanics
       REAL(KIND=RKIND) :: Fe(nsd,nsd), Fa(nsd,nsd), Fai(nsd,nsd)
+!      REAL(KIND=RKIND) :: para(14), Dm(6,6)	! (HW)
 
 !     Some preliminaries
       stM  = lDmn%stM
@@ -346,6 +348,138 @@
 
          RETURN
 
+!!    Calling the 'matDamage' sunroutine at the Gauss point level (moved to SUBROUTINE 'STRUCT3D').	 
+      CASE (stIso_BNSH)
+!         IF (.NOT. msh(1)%lDam) err = "lDam must be TRUE for BNSH"
+!         IF (eq(cEq)%itr .EQ. 1) THEN
+!             write(*,*) "lDam must TRUE for BNSH"
+!         END IF
+!         IF (nsd .NE. 3) err = "The damage model is used for "//
+!     2      "3D problems BNSH (2)"
+!!        NOTE: 'para(1:3)' now represent the fiber direction vector; this is only sutiable 
+!!        for simple geometries such as cube and rectangular plate. For complex geometries 
+!!        such as straight pipes and blood vessels, we must use 'beta_f' and 'xGp' (TODO)
+#if 0
+         para(1) = fl(1,1)		! TODO: or '= stM%C01' if use '2*beta_f' and 'xGp'
+         para(2) = fl(2,1)		
+         para(3) = fl(3,1)
+         para(4) = stM%C10		! c1
+         para(5) = stM%a		! eps1
+         para(6) = stM%b		! eps2
+         para(7) = stM%aff		! alph1
+         para(8) = stM%bff		! alph2
+         para(9) = stM%afs		! alph3
+         para(10) = stM%bfs		! ttimini
+         para(11) = stM%ass		! D_inf
+         para(12) = stM%bss		! gamma_inf
+         para(13) = stM%kap		! beta_s
+         para(14) = stM%Kpen		! r_s    
+         
+!!       Calling matDamage and save 'hrn' for each Gauss point	! (HW): see in 'STRUCT3D'
+         CALL matDamage(para,F,elmID,xGp,S,Dm)
+           
+!!       Convert back from the Voigt notation to fourth order tensors: Dm-->CC 
+         CC(1,1,1,1) = Dm(1,1)
+         CC(2,2,2,2) = Dm(2,2)
+         CC(3,3,3,3) = Dm(3,3)
+         
+         CC(1,2,1,2) = Dm(4,4)
+         CC(1,2,2,1) = Dm(4,4)
+         CC(2,1,2,1) = Dm(4,4)
+         CC(2,1,1,2) = Dm(4,4)
+ 
+         CC(2,3,2,3) = Dm(5,5)
+         CC(2,3,3,2) = Dm(5,5)
+         CC(3,2,3,2) = Dm(5,5)
+         CC(3,2,2,3) = Dm(5,5)
+         
+         CC(1,3,1,3) = Dm(6,6)
+         CC(1,3,3,1) = Dm(6,6)
+         CC(3,1,1,3) = Dm(6,6)
+         CC(3,1,3,1) = Dm(6,6)
+         
+         CC(1,1,2,2) = Dm(1,2)
+         CC(2,2,1,1) = Dm(2,1) 
+         CC(1,1,3,3) = Dm(1,3)
+         CC(3,3,1,1) = Dm(3,1)
+         CC(2,2,3,3) = Dm(2,3)
+         CC(3,3,2,2) = Dm(3,2)
+                
+         CC(1,1,1,2) = Dm(1,4)
+         CC(1,1,2,1) = Dm(1,4)
+         CC(2,1,1,1) = Dm(4,1)
+         CC(1,2,1,1) = Dm(4,1)
+         
+         CC(1,1,2,3) = Dm(1,5)	
+         CC(1,1,3,2) = Dm(1,5)
+         CC(2,3,1,1) = Dm(5,1)
+         CC(3,2,1,1) = Dm(5,1)
+         	
+         CC(1,1,1,3) = Dm(1,6)	
+         CC(1,1,3,1) = Dm(1,6)
+         CC(1,3,1,1) = Dm(6,1)
+         CC(3,1,1,1) = Dm(6,1)
+         
+         CC(2,2,1,2) = Dm(2,4)
+         CC(2,2,2,1) = Dm(2,4)
+         CC(2,1,2,2) = Dm(4,2)
+         CC(1,2,2,2) = Dm(4,2)         	
+         	
+         CC(2,2,2,3) = Dm(2,5)	
+         CC(2,2,3,2) = Dm(2,5)
+         CC(2,3,2,2) = Dm(5,2)
+         CC(3,2,2,2) = Dm(5,2)
+         
+         CC(2,2,1,3) = Dm(2,6)
+         CC(2,2,3,1) = Dm(2,6)
+         CC(1,3,2,2) = Dm(6,2)
+         CC(3,1,2,2) = Dm(6,2)
+         	
+         CC(3,3,1,2) = Dm(3,4)
+         CC(3,3,2,1) = Dm(3,4)
+         CC(2,1,3,3) = Dm(4,3)
+         CC(1,2,3,3) = Dm(4,3)
+         	
+         CC(3,3,2,3) = Dm(3,5)
+         CC(3,3,3,2) = Dm(3,5)
+         CC(2,3,3,3) = Dm(5,3)
+         CC(3,2,3,3) = Dm(5,3)
+         	
+         CC(3,3,1,3) = Dm(3,6)
+         CC(3,3,3,1) = Dm(3,6)
+         CC(1,3,3,3) = Dm(6,3)
+         CC(3,1,3,3) = Dm(6,3)
+         
+         CC(1,2,2,3) = Dm(4,5)
+         CC(1,2,3,2) = Dm(4,5)
+         CC(2,1,2,3) = Dm(4,5)
+         CC(2,1,3,2) = Dm(4,5)
+         
+         CC(2,3,1,2) = Dm(5,4)
+         CC(2,3,2,1) = Dm(5,4)
+         CC(3,2,2,1) = Dm(5,4)
+         CC(3,2,1,2) = Dm(5,4)
+         
+         CC(1,2,1,3) = Dm(4,6)
+         CC(1,2,3,1) = Dm(4,6)
+         CC(2,1,1,3) = Dm(4,6)
+         CC(2,1,3,1) = Dm(4,6)	
+         CC(1,3,2,1) = Dm(6,4)
+         CC(1,3,1,2) = Dm(6,4)
+         CC(3,1,2,1) = Dm(6,4)
+         CC(3,1,1,2) = Dm(6,4)	
+         	    
+         CC(2,3,1,3) = Dm(5,6)
+         CC(2,3,3,1) = Dm(5,6)
+         CC(3,2,1,3) = Dm(5,6)
+         CC(3,2,3,1) = Dm(5,6)	
+         CC(1,3,3,2) = Dm(6,5)
+         CC(1,3,2,3) = Dm(6,5)	
+         CC(3,1,3,2) = Dm(6,5)
+         CC(3,1,2,3) = Dm(6,5)
+#endif              
+         RETURN
+
       CASE DEFAULT
          err = "Undefined material constitutive model"
       END SELECT
@@ -404,7 +538,7 @@
      2   Hss(nsd,nsd), Hfs(nsd,nsd)
 !     Active strain for electromechanics
       REAL(KIND=RKIND) :: Fe(nsd,nsd), Fa(nsd,nsd), Fai(nsd,nsd)
-
+      
 !     Some preliminaries
       stM  = lDmn%stM
       nd   = REAL(nsd, KIND=RKIND)
@@ -656,7 +790,7 @@
          END IF
 
          RETURN
-
+         
       CASE DEFAULT
          err = "Undefined isochoric material constitutive model"
       END SELECT

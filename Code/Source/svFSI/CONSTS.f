@@ -174,11 +174,11 @@
 !     St.Venant-Kirchhoff, modified St.Venant-Kirchhoff, NeoHookean,
 !     Mooney-Rivlin, modified Holzapfel-Gasser-Ogden with dispersion,
 !     Linear model (S = mu*I), Guccione (1995), Holzapfel & Ogden model
-!     for myocardium (2009)
+!     for myocardium (2009), (HW) stIso_BNSH including volumetric part
       INTEGER(KIND=IKIND), PARAMETER :: stIso_NA = 600,
      2   stIso_StVK = 601, stIso_mStVK = 602, stIso_nHook = 603,
      3   stIso_MR = 604, stIso_HGO = 605, stIso_lin = 606,
-     4   stIso_Gucci = 607, stIso_HO = 608
+     4   stIso_Gucci = 607, stIso_HO = 608, stIso_BNSH = 609
 !--------------------------------------------------------------------
 !     Type of constitutive model (volumetric) for structure eqn:
 !     Quadratic, Simo-Taylor91, Miehe94

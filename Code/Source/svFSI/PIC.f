@@ -39,10 +39,12 @@
 !     This is the predictor
       SUBROUTINE PICP
       USE COMMOD
+      USE ALLFUN	! (HW)
       IMPLICIT NONE
 
       INTEGER(KIND=IKIND) iEq, s, e
       REAL(KIND=RKIND) coef
+      INTEGER(KIND=IKIND) iM, Ec, g	! (HW)
 
 !     Prestress initialization
       IF (pstEq) THEN
@@ -52,6 +54,25 @@
          Do = 0._RKIND
       END IF
 
+!!    Update 'hro' using 'hrn' (HW)
+!!    This can also be done after the correction step (PICC)
+      DO iM=1, nMsh
+       IF (msh(iM)%lDam) THEN
+        DO e=1, msh(iM)%nEl    ! TODO: nEl or gnEl?
+!!       Ec = msh(iM)%eDist(cm%id()) + e - 1    ! TODO: Program received signal SIGSEGV: Segmentation fault
+         cDmn = DOMAIN(msh(iM), cEq, e)
+         IF ((eq(cEq)%dmn(cDmn)%phys .EQ. phys_struct .OR.
+     2         eq(cEq)%dmn(cDmn)%phys .EQ. phys_ustruct) .AND.
+     3         eq(cEq)%dmn(cDmn)%stM%isoType .EQ. stIso_BNSH) THEN
+          DO g = 1, msh(iM)%nG
+             hro(:,g,e) = hrn(:,g,e)
+!!    	     hro(:,g,Ec) = hrn(:,g,Ec)	! at the Gauss point level; hrn(10,nG,gnEl)
+          END DO  ! g-loop
+         END IF
+        END DO  ! e-loop
+       END IF
+      END DO  ! iM-loop (HW)
+   
 !     IB treatment: Set dirichlet BC and update traces. For explicit
 !     coupling, compute FSI forcing and freeze it for the time step.
 !     For implicit coupling, project IB displacement on background

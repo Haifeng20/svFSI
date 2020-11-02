@@ -100,7 +100,7 @@ endif()
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 
-
+# 'matDamage.f' included (HW)
 set(FSRCS TYPEMOD.f
          UTIL.f
          COMU.f
@@ -138,6 +138,7 @@ set(FSRCS TYPEMOD.f
          LS.f
          MAIN.f
          MATMODELS.f
+         matDamage.f
          MESH.f
          NN.f
          NURBS.f

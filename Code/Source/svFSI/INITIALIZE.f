@@ -182,6 +182,14 @@
          END DO
       END IF
 
+!     Allocating 'hro and hrn' only for wall using damage model (HW)
+      DO iM=1, nMsh
+       IF (msh(iM)%lDam) THEN
+           ALLOCATE(hrn(10,msh(iM)%nG,msh(iM)%gnEl),
+     2		hro(10,msh(iM)%nG,msh(iM)%gnEl))		! TODO use %nEl? (HW)
+       END IF
+      END DO	! (HW)
+      
 !     Initialize tensor operations
       CALL TEN_INIT(nsd)
 
@@ -386,7 +394,7 @@
       IMPLICIT NONE
       REAL(KIND=RKIND), INTENT(OUT) :: timeP(3)
 
-      INTEGER(KIND=IKIND) a
+      INTEGER(KIND=IKIND) a, iM, e, g		! (HW): iM, e, g
 
       std = " Initializing state variables to zero"
 
@@ -422,6 +430,20 @@
          END IF
       END IF
 
+!     No need for 'hro' since 'hro=hrn' before 'PICP' (HW)
+      DO iM=1, nMsh
+       IF (msh(iM)%lDam) THEN  
+         DO e = 1,msh(iM)%gnEl		! TODO %gnEl or %nEl? (HW)
+          DO g = 1,msh(iM)%nG
+           DO a = 1,10
+             hro(a,g,e) = 0._RKIND 
+             hrn(a,g,e) = 0._RKIND
+           END DO
+          END DO
+         END DO
+       END IF ! lDam or stIso_BNSH
+      END DO
+     
 !     Load any explicitly provided solution variables
       IF (ALLOCATED(Vinit)) THEN
          DO a=1, tnNo
@@ -641,6 +663,9 @@
       IF (ALLOCATED(cmmBdry))  DEALLOCATE(cmmBdry)
       IF (ALLOCATED(iblank))   DEALLOCATE(iblank)
 
+      IF (ALLOCATED(hro))       DEALLOCATE(hro)   !(HW)
+      IF (ALLOCATED(hrn))       DEALLOCATE(hrn)
+      
       IF (ALLOCATED(Ao))       DEALLOCATE(Ao)
       IF (ALLOCATED(An))       DEALLOCATE(An)
       IF (ALLOCATED(Do))       DEALLOCATE(Do)

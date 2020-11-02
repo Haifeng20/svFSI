@@ -70,6 +70,7 @@
             lPM => list%get(msh(iM)%name,"Add mesh",iM)
             lPtr => lPM%get(msh(iM)%lShl,"Set mesh as shell")
             lPtr => lPM%get(msh(iM)%lFib,"Set mesh as fibers")
+            lPtr => lPM%get(msh(iM)%lDam,"Set mesh to damage model")	! (HW)
 
             std  = " Reading mesh <"//CLR(TRIM(msh(iM)%name))//">"
             CALL READSV(lPM, msh(iM))

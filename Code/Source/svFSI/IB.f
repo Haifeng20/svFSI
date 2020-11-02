@@ -60,6 +60,7 @@
       DO iM=1, ib%nMsh
          lPM => list%get(ib%msh(iM)%name, "Add IB", iM)
          lPtr => lPM%get(ib%msh(iM)%lShl, "Set mesh as shell")
+!        lPtr => lPM%get(msh(iM)%lDam,"Set mesh to damage model")	! (HW)
          IF (ib%msh(iM)%lShl) err = "Immersed shells are not allowed"
 
          std  = " Reading IB mesh <"//CLR(TRIM(ib%msh(iM)%name))//">"

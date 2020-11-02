@@ -51,6 +51,8 @@
       REAL(KIND=RKIND), ALLOCATABLE :: xl(:,:), al(:,:), yl(:,:),
      2   dl(:,:), bfl(:,:), fN(:,:), pS0l(:,:), pSl(:), ya_l(:), N(:),
      3   Nx(:,:), lR(:,:), lK(:,:,:)
+!      REAL(KIND=RKIND) xGp(nsd)  	! (HW)
+      INTEGER(KIND=IKIND) i  	! (HW) used in 'xGp(i)'
 
       eNoN = lM%eNoN
       nFn  = lM%nFn
@@ -64,6 +66,10 @@
 
 !     Loop over all elements of mesh
       DO e=1, lM%nEl
+! 	 'lM%eDist(cm%id())' represents first element which belong to 'cm%id()'
+!         elmID = lM%eDist(cm%id()) + e - 1
+         elmID = e	! elmID=global element Ids of the mesh (HW)
+         
 !        Update domain and proceed if domain phys and eqn phys match
          cDmn  = DOMAIN(lM, cEq, e)
          cPhys = eq(cEq)%dmn(cDmn)%phys
@@ -97,6 +103,7 @@
          lR = 0._RKIND
          lK = 0._RKIND
          DO g=1, lM%nG
+            gID = g	! Alternatively, 'g' can be locally passed to 'GETPK2CC' (HW)
             IF (g.EQ.1 .OR. .NOT.lM%lShpF) THEN
                CALL GNN(eNoN, nsd, lM%Nx(:,:,g), xl, Nx, Jac, ksix)
                IF (ISZERO(Jac)) err = "Jac < 0 @ element "//e
@@ -104,6 +111,18 @@
             w = lM%w(g) * Jac
             N = lM%N(:,g)
 
+!           Cartesian coordinates of the Gauss point g, 'xGp(3)'  (HW)  msh(iM)%N(a,g)
+!          'xGp' is required for determining Fibre directions at each Gauss point.
+!          'xGp' is needed only if 'matDamage' called at the Gauss point level
+!           TODO: 'xGp' can be passed locally
+	    IF (lM%lDam) THEN
+             DO i=1, 3
+              DO a=1, eNoN
+                 xGp(i) = xGp(i) + N(a)*xl(i,a)     !HW: double check(TODO)
+              END DO
+             END DO
+	    END IF   ! lDam: only if 'matDamage' called at the Gauss point level (HW)
+   
             pSl = 0._RKIND
             IF (nsd .EQ. 3) THEN
                CALL STRUCT3D(eNoN, nFn, w, N, Nx, al, yl, dl, bfl, fN,
@@ -136,7 +155,22 @@
          END IF
 #endif
       END DO ! e: loop
-
+      
+!     JUST CHECK  (HW)
+      IF (time .gt. eq(cEq)%dmn(cDmn)%stM%bfs-dt/2.d0-1 .AND.
+     &       time .lt. eq(cEq)%dmn(cDmn)%stM%bfs+dt/2.d0+1) THEN
+           DO a = 1,5
+             write(*,*)'hro(',a,',1,1)=',hro(a,1,1)
+           END DO		
+!         DO g = 1,lM%nG
+           DO a = 1,5
+!             write(*,*)'hro=',hro(a,g,e)
+!             write(*,*)'hrn(',a,g,e')=',hrn(a,g,e)
+             write(*,*)'hrn(',a,',1,1)=',hrn(a,1,1)
+           END DO
+!         END DO
+      END IF  ! (HW)
+         
       DEALLOCATE(ptr, xl, al, yl, dl, bfl, fN, pS0l, pSl, ya_l, N, Nx,
      2   lR, lK)
 
@@ -148,6 +182,7 @@
       USE COMMOD
       USE ALLFUN
       IMPLICIT NONE
+      EXTERNAL matDamage	! (HW)
       INTEGER(KIND=IKIND), INTENT(IN) :: eNoN, nFn
       REAL(KIND=RKIND), INTENT(IN) :: w, N(eNoN), Nx(3,eNoN),
      2   al(tDof,eNoN), yl(tDof,eNoN), dl(tDof,eNoN), bfl(3,eNoN),
@@ -160,6 +195,7 @@
       REAL(KIND=RKIND) :: rho, dmp, T1, amd, afl, ya_g, fb(3), ud(3),
      2   NxSNx, BmDBm, F(3,3), S(3,3), P(3,3), Dm(6,6), DBm(6,3),
      3   Bm(6,3,eNoN), CC(3,3,3,3), S0(3,3)
+      REAL(KIND=RKIND) :: para(14)	! (HW): xGp(3) defined globally
 
 !     Define parameters
       rho     = eq(cEq)%dmn(cDmn)%prop(solid_density)
@@ -210,8 +246,35 @@
       S0(3,2) = S0(2,3)
 
 !     2nd Piola-Kirchhoff tensor (S) and material stiffness tensor (CC)
-      CALL GETPK2CC(eq(cEq)%dmn(cDmn), F, nFn, fN, ya_g, S, CC)
+      IF (eq(cEq)%dmn(cDmn)%stM%isoType .NE. stIso_BNSH) THEN		
+         CALL GETPK2CC(eq(cEq)%dmn(cDmn), F, nFn, fN, ya_g, S, CC)
+      ELSE
+!!!   TODO: 'hrn and hro' must be correctly used for 'restart, remesh, and MPI'.
+!!       NOTE: 'para(1:3)' now represent the fiber direction vector; this is only sutiable 
+!!       for simple geometries such as cube and rectangular plate. For complex geometries 
+!!       such as straight pipes and blood vessels, we need 'beta_f' and 'xGp'.
+         para(1) = fN(1,1)	! or '= stM%C01', and use '2*beta_f' and 'xGp'
+         para(2) = fN(2,1)		
+         para(3) = fN(3,1)
+         para(4) = eq(cEq)%dmn(cDmn)%stM%C10		! c1
+         para(5) = eq(cEq)%dmn(cDmn)%stM%a		! eps1
+         para(6) = eq(cEq)%dmn(cDmn)%stM%b		! eps2
+         para(7) = eq(cEq)%dmn(cDmn)%stM%aff		! alph1
+         para(8) = eq(cEq)%dmn(cDmn)%stM%bff		! alph2
+         para(9) = eq(cEq)%dmn(cDmn)%stM%afs		! alph3
+         para(10) = eq(cEq)%dmn(cDmn)%stM%bfs		! ttimini
+         para(11) = eq(cEq)%dmn(cDmn)%stM%ass		! D_inf
+         para(12) = eq(cEq)%dmn(cDmn)%stM%bss		! gamma_inf
+         para(13) = eq(cEq)%dmn(cDmn)%stM%kap		! beta_s
+         para(14) = eq(cEq)%dmn(cDmn)%stM%Kpen		! r_s     
 
+!!       If called at the integration point level, one must ensure
+!!       that all info on a specific point are known and 'CALL matDamage'
+!!       must be inside a loop over eNoN(TODO).
+!!       Calling matDamage and save 'hrn' for each Gauss point
+         CALL matDamage(para,F,elmID,xGp,S,Dm)
+      END IF  ! (HW): stIso_BNSH
+      
 !     Prestress
       pSl(1) = S(1,1)
       pSl(2) = S(2,2)
@@ -228,39 +291,58 @@
       P = MATMUL(F, S)
 
 !     Convert to Voigt Notation
-      Dm(1,1) = CC(1,1,1,1)
-      Dm(1,2) = CC(1,1,2,2)
-      Dm(1,3) = CC(1,1,3,3)
-      Dm(1,4) = CC(1,1,1,2)
-      Dm(1,5) = CC(1,1,2,3)
-      Dm(1,6) = CC(1,1,3,1)
+!     (HW): no need if 'matDamage' is called; must ensure 'CC' is not required anywhere else 
+      IF (eq(cEq)%dmn(cDmn)%stM%isoType .NE. stIso_BNSH) THEN
+       Dm(1,1) = CC(1,1,1,1)
+       Dm(1,2) = CC(1,1,2,2)
+       Dm(1,3) = CC(1,1,3,3)
+       Dm(1,4) = CC(1,1,1,2)
+       Dm(1,5) = CC(1,1,2,3)
+       Dm(1,6) = CC(1,1,3,1)
 
-      Dm(2,2) = CC(2,2,2,2)
-      Dm(2,3) = CC(2,2,3,3)
-      Dm(2,4) = CC(2,2,1,2)
-      Dm(2,5) = CC(2,2,2,3)
-      Dm(2,6) = CC(2,2,3,1)
+       Dm(2,2) = CC(2,2,2,2)
+       Dm(2,3) = CC(2,2,3,3)
+       Dm(2,4) = CC(2,2,1,2)
+       Dm(2,5) = CC(2,2,2,3)
+       Dm(2,6) = CC(2,2,3,1)
 
-      Dm(3,3) = CC(3,3,3,3)
-      Dm(3,4) = CC(3,3,1,2)
-      Dm(3,5) = CC(3,3,2,3)
-      Dm(3,6) = CC(3,3,3,1)
+       Dm(3,3) = CC(3,3,3,3)
+       Dm(3,4) = CC(3,3,1,2)
+       Dm(3,5) = CC(3,3,2,3)
+       Dm(3,6) = CC(3,3,3,1)
 
-      Dm(4,4) = CC(1,2,1,2)
-      Dm(4,5) = CC(1,2,2,3)
-      Dm(4,6) = CC(1,2,3,1)
+       Dm(4,4) = CC(1,2,1,2)
+       Dm(4,5) = CC(1,2,2,3)
+       Dm(4,6) = CC(1,2,3,1)
 
-      Dm(5,5) = CC(2,3,2,3)
-      Dm(5,6) = CC(2,3,3,1)
+       Dm(5,5) = CC(2,3,2,3)
+       Dm(5,6) = CC(2,3,3,1)
 
-      Dm(6,6) = CC(3,1,3,1)
+       Dm(6,6) = CC(3,1,3,1)
 
-      DO a=2, 6
+       DO a=2, 6
          DO b=1, a-1
             Dm(a,b) = Dm(b,a)
          END DO
-      END DO
+       END DO
+      END IF   ! (HW): stIso_BNSH
 
+!     JUST CHECK  (HW)
+      IF (time .gt. para(10)-dt/2.d0-1 .AND.
+     &       time .lt. para(10)+dt/2.d0+1 .AND.
+     &       gID.eq.1 .AND. elmID.eq.1) THEN
+        DO a=1, 6
+         DO b=1, 6
+            write(*,*)'Dm=',Dm(b,a)
+         END DO
+        END DO
+        DO a=1, 3
+         DO b=1, 3
+            write(*,*)'S=',S(b,a)
+         END DO
+        END DO
+      END IF   ! (HW)
+         
       DO a=1, eNoN
          Bm(1,1,a) = Nx(1,a)*F(1,1)
          Bm(1,2,a) = Nx(1,a)*F(2,1)

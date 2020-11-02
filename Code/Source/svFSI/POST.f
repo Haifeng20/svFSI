@@ -658,8 +658,17 @@
                   IF (.NOT.ISZERO(detF)) sigma(:,:) = sigma(:,:) / detF
 
                ELSE IF (cPhys .EQ. phys_struct) THEN
-                  CALL GETPK2CC(eq(iEq)%dmn(cDmn), F, nFn, fN, ya, S,CC)
-                  sigma = S
+                  CALL GETPK2CC(eq(iEq)%dmn(cDmn), F, nFn, fN, ya, S,CC)            
+!     		  Ensure 'sigma = F S F^T / J' when using 'stIso_BNSH' (HW)
+	          IF (eq(iEq)%dmn(cDmn)%stM%isoType .EQ. stIso_BNSH) THEN
+      		     P = MATMUL(F, S)		
+                     sigma = MATMUL(P, TRANSPOSE(F))		
+                     IF (.NOT.ISZERO(detF)) THEN 
+                        sigma(:,:) = sigma(:,:) / detF
+                     END IF
+                  ELSE
+                     sigma = S		! original version (HW)
+                  END IF
 
                END IF
 

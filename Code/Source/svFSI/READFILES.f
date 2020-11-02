@@ -2457,7 +2457,27 @@ c     2         "can be applied for Neumann boundaries only"
          lPtr => lSt%get(lDmn%stM%bss, "b4s")
          lPtr => lSt%get(lDmn%stM%afs, "afs")
          lPtr => lSt%get(lDmn%stM%bfs, "bfs")
-
+         
+      CASE ("BNSH", "Damage")
+      ! Tissue damage models (only for 3D) (HW)
+         lDmn%stM%isoType = stIso_BNSH
+         lPtr => lSt%get(lDmn%stM%C01, "beta_f2")
+         lPtr => lSt%get(lDmn%stM%C10, "c1")	! TODO (HW)
+         lPtr => lSt%get(lDmn%stM%a, "eps1")
+         lPtr => lSt%get(lDmn%stM%b, "eps2")
+         lPtr => lSt%get(lDmn%stM%aff, "alph1")
+         lPtr => lSt%get(lDmn%stM%bff, "alph2")
+         lPtr => lSt%get(lDmn%stM%afs, "alph3")
+         lPtr => lSt%get(lDmn%stM%bfs, "ttimini")
+         lPtr => lSt%get(lDmn%stM%ass, "D_inf")
+         lPtr => lSt%get(lDmn%stM%bss, "gamma_inf")
+         lPtr => lSt%get(lDmn%stM%kap, "beta_s")
+         lPtr => lSt%get(lDmn%stM%Kpen, "r_s")		
+         IF (nsd .NE. 3) THEN
+            err = "The damage models are used for 3D problems "//
+     2         "see BNSH"
+         END IF
+         
       CASE DEFAULT
          err = "Undefined constitutive model used"
       END SELECT

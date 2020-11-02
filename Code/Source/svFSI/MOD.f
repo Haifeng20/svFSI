@@ -485,6 +485,8 @@
          LOGICAL :: lShl = .FALSE.
 !        Whether the mesh is fibers (Purkinje)
          LOGICAL :: lFib = .FALSE.
+!        Whether the tissue damage model is used (HW)
+         LOGICAL :: lDam = .FALSE.	! .FALSE. .TRUE. -> TODO set default to 'FALSE' which can be changed in 'svFSI.inp' (HW)
 !        Element type
          INTEGER(KIND=IKIND) :: eType = eType_NA
 !        Number of nodes (control points) in a single element
@@ -703,6 +705,8 @@
          REAL(KIND=RKIND), ALLOCATABLE :: A0(:,:)
          REAL(KIND=RKIND), ALLOCATABLE :: Y0(:,:)
          REAL(KIND=RKIND), ALLOCATABLE :: D0(:,:)
+!     Copy of 'hrn' where remeshing starts; Note that 'hro=hrn' will be carried out before 'PICP' 
+         REAL(KIND=RKIND), ALLOCATABLE :: hrn0(:,:,:)	! (HW)
 !     Flag is set if remeshing is required for each mesh
          LOGICAL, ALLOCATABLE :: flag(:)
       END TYPE rmshType
@@ -891,8 +895,16 @@
       CHARACTER(LEN=stdL) stFileName
 !     Stop_trigger file name
       CHARACTER(LEN=stdL) stopTrigName
+      
+!     IDs of element and Gauss point; maybe no need to be global (HW)
+      INTEGER(KIND=IKIND) elmID		
+      INTEGER(KIND=IKIND) gID
+      REAL(KIND=RKIND) :: xGp(3)		! (HW): can be passed locally
 
 !     ALLOCATABLE DATA
+!     History variables (old and new), hrn(10,nG,gnEl) (HW)
+      REAL(KIND=RKIND), ALLOCATABLE :: hro(:,:,:)
+      REAL(KIND=RKIND), ALLOCATABLE :: hrn(:,:,:)
 !     Column pointer (for sparse LHS matrix structure)
       INTEGER(KIND=IKIND), ALLOCATABLE :: colPtr(:)
 !     Domain ID
