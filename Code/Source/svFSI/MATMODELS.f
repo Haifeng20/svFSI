@@ -42,7 +42,7 @@
       USE MATFUN
       USE COMMOD
       IMPLICIT NONE
-!      EXTERNAL matDamage	! (HW)
+      EXTERNAL matDamage	! (HW)
       TYPE(dmnType), INTENT(IN) :: lDmn
       INTEGER(KIND=IKIND), INTENT(IN) :: nfd
       REAL(KIND=RKIND), INTENT(IN) :: F(nsd,nsd), fl(nsd,nfd), ya
@@ -59,7 +59,8 @@
      4   Hss(nsd,nsd), Sfs(nsd,nsd,6), Hfs(nsd,nsd)
 !     Active strain for electromechanics
       REAL(KIND=RKIND) :: Fe(nsd,nsd), Fa(nsd,nsd), Fai(nsd,nsd)
-!      REAL(KIND=RKIND) :: para(14), Dm(6,6)	! (HW)
+      REAL(KIND=RKIND) :: para(14), hr(20), Dm(6,6)	! (HW)
+      INTEGER(KIND=IKIND) :: i		! (HW): xGp(i) defined globally
 
 !     Some preliminaries
       stM  = lDmn%stM
@@ -348,18 +349,17 @@
 
          RETURN
 
-!!    Calling the 'matDamage' sunroutine at the Gauss point level (moved to SUBROUTINE 'STRUCT3D').	 
+!!    Calling the 'matDamage' sunroutine at the Gauss point level 
+!!    must call 'matDamage' inside 'GETPK2CC' (cannot moved to SUBROUTINE 'STRUCT3D')
+!!    TODO: 'hrn and hro' must be correctly used for 'restart, remesh, and MPI'.	 
       CASE (stIso_BNSH)
 !         IF (.NOT. msh(1)%lDam) err = "lDam must be TRUE for BNSH"
-!         IF (eq(cEq)%itr .EQ. 1) THEN
-!             write(*,*) "lDam must TRUE for BNSH"
-!         END IF
-!         IF (nsd .NE. 3) err = "The damage model is used for "//
-!     2      "3D problems BNSH (2)"
+         IF (nsd .NE. 3) err = "The damage model is used for "//
+     2      "3D problems BNSH (2)"
 !!        NOTE: 'para(1:3)' now represent the fiber direction vector; this is only sutiable 
 !!        for simple geometries such as cube and rectangular plate. For complex geometries 
 !!        such as straight pipes and blood vessels, we must use 'beta_f' and 'xGp' (TODO)
-#if 0
+!#if 0
          para(1) = fl(1,1)		! TODO: or '= stM%C01' if use '2*beta_f' and 'xGp'
          para(2) = fl(2,1)		
          para(3) = fl(3,1)
@@ -373,10 +373,20 @@
          para(11) = stM%ass		! D_inf
          para(12) = stM%bss		! gamma_inf
          para(13) = stM%kap		! beta_s
-         para(14) = stM%Kpen		! r_s    
+!         para(14) = stM%Kpen		! r_s --> ERROR: gives '5.8333' (HW)
+         para(14) = stM%C01		! r_s --> TODO: use extra global pointers?     
+
+         DO i = 1,10
+            hr(i) = hro(i,gID,elmID)	
+         END DO
+
+!!       Calling matDamage and save 'hrn' for each Gauss point 	! (HW): see in 'STRUCT3D'
+!        CALL matDamage(para,F,elmID,xGp,S,Dm)
+         CALL matDamage(para,F,xGp,hr,S,Dm)
          
-!!       Calling matDamage and save 'hrn' for each Gauss point	! (HW): see in 'STRUCT3D'
-         CALL matDamage(para,F,elmID,xGp,S,Dm)
+         DO i = 1,10
+            hrn(i,gID,elmID) = hr(i+10)	
+         END DO
            
 !!       Convert back from the Voigt notation to fourth order tensors: Dm-->CC 
          CC(1,1,1,1) = Dm(1,1)
@@ -477,7 +487,7 @@
          CC(1,3,2,3) = Dm(6,5)	
          CC(3,1,3,2) = Dm(6,5)
          CC(3,1,2,3) = Dm(6,5)
-#endif              
+!#endif              
          RETURN
 
       CASE DEFAULT

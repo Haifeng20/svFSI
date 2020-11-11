@@ -57,7 +57,7 @@
 !!    Update 'hro' using 'hrn' (HW)
 !!    This can also be done after the correction step (PICC)
       DO iM=1, nMsh
-       IF (msh(iM)%lDam) THEN
+!       IF (msh(iM)%lDam) THEN
         DO e=1, msh(iM)%nEl    ! TODO: nEl or gnEl?
 !!       Ec = msh(iM)%eDist(cm%id()) + e - 1    ! TODO: Program received signal SIGSEGV: Segmentation fault
          cDmn = DOMAIN(msh(iM), cEq, e)
@@ -70,7 +70,7 @@
           END DO  ! g-loop
          END IF
         END DO  ! e-loop
-       END IF
+!       END IF  ! lDam or stIso_BNSH
       END DO  ! iM-loop (HW)
    
 !     IB treatment: Set dirichlet BC and update traces. For explicit

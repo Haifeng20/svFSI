@@ -408,7 +408,7 @@
       CALL cm%bcast(lM%lShpF)
       CALL cm%bcast(lM%lShl)
       CALL cm%bcast(lM%lFib)
-!      CALL cm%bcast(lM%lDam)	! (HW)
+!      CALL cm%bcast(lM%lDam)	! (HW): IBM not used
       CALL cm%bcast(lM%eType)
       CALL cm%bcast(lM%eNoN)
       CALL cm%bcast(lM%gnEl)
@@ -1122,11 +1122,9 @@
       CALL cm%bcast(lM%scF)
       nFn = lM%nFn
 
-      IF (lM%lDam) THEN
-         CALL cm%bcast(lM%lDam)	  ! (HW)
-!         CALL cm%bcast(lM%hro)   ! TODO
-!         CALL cm%bcast(lM%hrn)
-      END IF ! lDam
+!      IF (lM%lDam) THEN
+!         CALL cm%bcast(lM%lDam)	  ! (HW)
+!      END IF ! lDam
       
       insd = nsd
       IF (lM%lShl) insd = nsd - 1

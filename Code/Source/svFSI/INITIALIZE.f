@@ -184,10 +184,10 @@
 
 !     Allocating 'hro and hrn' only for wall using damage model (HW)
       DO iM=1, nMsh
-       IF (msh(iM)%lDam) THEN
+!       IF (msh(iM)%lDam) THEN
            ALLOCATE(hrn(10,msh(iM)%nG,msh(iM)%gnEl),
      2		hro(10,msh(iM)%nG,msh(iM)%gnEl))		! TODO use %nEl? (HW)
-       END IF
+!       END IF  ! lDam or stIso_BNSH
       END DO	! (HW)
       
 !     Initialize tensor operations
@@ -432,7 +432,7 @@
 
 !     No need for 'hro' since 'hro=hrn' before 'PICP' (HW)
       DO iM=1, nMsh
-       IF (msh(iM)%lDam) THEN  
+!       IF (msh(iM)%lDam) THEN  
          DO e = 1,msh(iM)%gnEl		! TODO %gnEl or %nEl? (HW)
           DO g = 1,msh(iM)%nG
            DO a = 1,10
@@ -441,7 +441,7 @@
            END DO
           END DO
          END DO
-       END IF ! lDam or stIso_BNSH
+!       END IF ! lDam or stIso_BNSH
       END DO
      
 !     Load any explicitly provided solution variables

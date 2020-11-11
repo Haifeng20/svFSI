@@ -1204,7 +1204,7 @@
       CALL DESTROYTRACE(lM%trc)
 
       lM%lShl  = .FALSE.
-      lM%lDam  = .FALSE.	! (HW)
+!      lM%lDam  = .FALSE.	! (HW)
       lM%eType = eType_NA
       lM%gnEl  = 0
       lM%gnNo  = 0

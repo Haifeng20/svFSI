@@ -486,7 +486,7 @@
 !        Whether the mesh is fibers (Purkinje)
          LOGICAL :: lFib = .FALSE.
 !        Whether the tissue damage model is used (HW)
-         LOGICAL :: lDam = .FALSE.	! .FALSE. .TRUE. -> TODO set default to 'FALSE' which can be changed in 'svFSI.inp' (HW)
+!         LOGICAL :: lDam = .FALSE.	! .FALSE. .TRUE. -> TODO set default to 'FALSE' which can be changed in 'svFSI.inp' (HW)
 !        Element type
          INTEGER(KIND=IKIND) :: eType = eType_NA
 !        Number of nodes (control points) in a single element
